@@ -4,10 +4,10 @@ from pyspark import SparkConf
 import pyspark.sql.functions as F
 from json import loads
 
-configs = loads(open("configs.json", 'r').read().strip())["streaming"]
+configs = loads(open("/job/configs.json", 'r').read().strip())["streaming"]
 conf = SparkConf().setAppName("lambda_stream")\
     .setAll(configs["sparkConf"])
-spark = SparkSession.Builder()\
+spark = SparkSession.Builder().master('local[1]')\
     .config(conf=conf).getOrCreate()
 
 sc = spark.sparkContext
@@ -35,6 +35,7 @@ def readFromPostgres(sp:pyspark.sql.SparkSession, query,\
 #and the function being used only accepts two fixed parameters
 #So for three separate tables we wrote three separate functions
 def writeAllJoined(dataframe:pyspark.sql.DataFrame, batchId:int) -> None:
+    dataframe.show()
     dataframe.write.mode("append") \
         .format("jdbc") \
         .option("url", "jdbc:postgresql://localhost:5432/my_database") \
@@ -45,6 +46,7 @@ def writeAllJoined(dataframe:pyspark.sql.DataFrame, batchId:int) -> None:
         .save()
 
 def writeUserGrouped(dataframe:pyspark.sql.DataFrame, batchId:int) -> None:
+    dataframe.show()
     dataframe.write.mode("append") \
         .format("jdbc") \
         .option("url", "jdbc:postgresql://localhost:5432/my_database") \
@@ -71,6 +73,7 @@ df = spark\
     .option("subscribe", configs["topic"]) \
     .option("maxOffsetsPerTrigger", "20")\
     .option("startingOffsets", "earliest")\
+    .option("failOnDataLoss", "false")\
     .load()
 
 #Decode the byte array which is the actual record
@@ -93,7 +96,7 @@ pgtable = readFromPostgres(spark, user=configs["user"], password=configs["passwo
                            query=pgQuery, ptColumn="partitionKey",\
                            lowerBound=0, upperBound=f"{int(configs['numPartitions'])}", numPartitions=configs["numPartitions"]).cache()
 
-#This dataframe is the joined version of the untransformed data
+# #This dataframe is the joined version of the untransformed data
 allJoinedDF = behaviorData.join(F.broadcast(pgtable), pgtable.id == behaviorData.movie_id)\
     .select(behaviorData['user_id'], pgtable['name'].alias("movie_name"),\
             pgtable[ 'year'].alias("movie_year"),pgtable['score'].alias("movie_score"),\
@@ -120,19 +123,16 @@ movieGrouped = movieGrouped.join(F.broadcast(pgtable), pgtable.id == movieGroupe
 
 
 dsAllJoined = allJoinedDF.writeStream \
-    .option("checkpointLocation","/home/saleh/Desktop/allJoined")\
     .foreachBatch(writeAllJoined)\
     .trigger(processingTime='10 seconds')\
     .start()
 
 dsUserGrouped = userGrouped.writeStream \
-    .option("checkpointLocation","/home/saleh/Desktop/UserGrouped")\
     .foreachBatch(writeUserGrouped)\
     .trigger(processingTime='10 seconds')\
     .start()
 
 dsMovieGrouped = movieGrouped.writeStream \
-    .option("checkpointLocation","/home/saleh/Desktop/MovieGrouped")\
     .foreachBatch(writeMovieGrouped)\
     .trigger(processingTime='10 seconds')\
     .start()

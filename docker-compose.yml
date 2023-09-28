@@ -1,0 +1,92 @@
+version: '0'
+
+networks:
+  app-tier:
+    driver: bridge
+
+#All the directories(and their subdirectories) listed under volumes on the host side
+#they should have 777 access permissions
+
+services:
+  kafka:
+    image: 'bitnami/kafka:3.5.1'
+    hostname: kafka-server
+    networks:
+      - app-tier
+    ports:
+      - "9094:9094"
+    volumes:
+      - "./kafka:/bitnami/kafka"
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-server:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+  postgresql:
+    image: 'bitnami/postgresql:12.16.0'
+    hostname: postgresql
+    network_mode: host
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./postgres:/bitnami/postgresql"
+    environment:
+      - POSTGRESQL_PASSWORD=postgres
+      - POSTGRESQL_DATABASE=my_database
+
+  batcher:
+    image: 'godatadriven/pyspark:3.1.3'
+    network_mode: host
+    volumes:
+      - "./spark/batch:/job"
+    command: "--jars /job/jars/* /job/batch_pipeline.py"
+    depends_on:
+      postgresql:
+        condition: service_started
+        restart: true
+      kafka:
+        condition: service_started
+        restart: true
+      source:
+        condition: service_started
+        restart: true
+
+  streamer:
+    image: 'godatadriven/pyspark:3.1.3'
+    network_mode: host
+    volumes:
+      - "./spark/stream:/job"
+    command: '--jars /job/jars/* /job/stream_pipeline.py'
+    depends_on:
+      postgresql:
+        condition: service_started
+        restart: true
+      kafka:
+        condition: service_started
+        restart: true
+      source:
+        condition: service_started
+        restart: true
+
+  source:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: python-source
+    #If you want to use(create) a new topic change "streaming" to the name you want
+    command: bash -c "python3.7 /source/source.py streaming"
+    network_mode: host
+    volumes:
+      - "./source:/source"
+    depends_on:
+      postgresql:
+        condition: service_started
+        restart: true
+      kafka:
+        condition: service_started
+        restart: true
+

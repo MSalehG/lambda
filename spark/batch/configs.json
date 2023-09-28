@@ -1,7 +1,7 @@
 {
   "batch": {
-    "sparkConf":[["spark.sql.files.maxPartitionBytes","6m"], ["spark.sql.shuffle.partitions","8"], ["spark.jars.packages", "org.postgresql:postgresql:42.2.5"]],
-    "csvPath": "batch/source.csv",
+    "sparkConf":[["spark.sql.files.maxPartitionBytes","6m"], ["spark.sql.shuffle.partitions","8"]],
+    "csvPath": "/job/source.csv",
     "url": "jdbc:postgresql://localhost:5432/my_database",
     "user": "postgres",
     "password": "postgres",

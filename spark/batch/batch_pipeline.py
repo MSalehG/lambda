@@ -31,11 +31,15 @@ def writeToPostgres(dataframe:pyspark.sql.DataFrame, url, dbtable, user, passwor
         .option("password", password) \
         .save()
 
-configs = loads(open("configs.json", 'r').read().strip())["batch"]
+configs = loads(open("/job/configs.json", 'r').read().strip())["batch"]
 conf = SparkConf().setAppName("lambda_batch")\
     .setAll(configs["sparkConf"])
 spark = SparkSession.Builder()\
     .config(conf=conf).getOrCreate()
+
+sc = spark.sparkContext
+log4jLogger = sc._jvm.org.apache.log4j
+log4jLogger.LogManager.getRootLogger().setLevel(log4jLogger.Level.WARN)
 
 #Create a schema for the dataframe after reading from the csv file
 schema = StructType([StructField("user_id", IntegerType(), nullable=True),\

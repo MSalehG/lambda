@@ -3,10 +3,9 @@ import numpy as np
 from time import sleep
 import csv
 from json import loads
+import sys
 
-configs = loads(open("configs.json", 'r').read().strip())["source"]
-header = configs["header"]
-csvAddress = configs["csvAddress"]
+argv = sys.argv
 
 #*****
 #In this script first the database tables are created
@@ -78,6 +77,10 @@ tableList = ["movies",
              "allJoined_batch", "userGrouped_batch", "movieGrouped_batch",\
              "allJoined_stream", "userGrouped_stream", "movieGrouped_stream"]
 
+
+query = f"drop table movies"
+postgresConnector(mode="create", query=query)
+
 for query in queryList:
     postgresConnector(mode="create", query=query)
 
@@ -99,7 +102,7 @@ while True:
     #First generate new record
     data = generateRecord()
     #Then insert it into Kafka
-    kafkaProduce("localhost:9094", "streaming", ','.join(map(str,data)).replace('None',''))
+    kafkaProduce("localhost:9094", argv[1], ','.join(map(str,data)).replace('None',''))
 
     rnd = np.random.choice([1/i for i in range(1,5)],1)[0]
     sleep(rnd)
