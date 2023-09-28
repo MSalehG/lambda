@@ -6,6 +6,8 @@ from json import loads
 import sys
 
 argv = sys.argv
+csvAddress = "/source/source.csv"
+header = ["user_id", "movie_id", "event_type", "event_payload", "timestamp"]
 
 #*****
 #In this script first the database tables are created
@@ -88,6 +90,8 @@ dataset = createMovieDataset(movie_names)
 insertQuery = "INSERT INTO movies (id, name, year, score, language) VALUES %s"
 postgresConnector(mode="insert", query=insertQuery, input=dataset)
 
+#Uncomment this part only if you wnat to create another
+#CSV file for the batch processing
 # with open(csvAddress, "w") as f:
 #         writer = csv.writer(f)
 #         writer.writerow(header)
