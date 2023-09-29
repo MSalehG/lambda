@@ -35,7 +35,6 @@ def readFromPostgres(sp:pyspark.sql.SparkSession, query,\
 #and the function being used only accepts two fixed parameters
 #So for three separate tables we wrote three separate functions
 def writeAllJoined(dataframe:pyspark.sql.DataFrame, batchId:int) -> None:
-    dataframe.show()
     dataframe.write.mode("append") \
         .format("jdbc") \
         .option("url", "jdbc:postgresql://localhost:5432/my_database") \
@@ -46,7 +45,6 @@ def writeAllJoined(dataframe:pyspark.sql.DataFrame, batchId:int) -> None:
         .save()
 
 def writeUserGrouped(dataframe:pyspark.sql.DataFrame, batchId:int) -> None:
-    dataframe.show()
     dataframe.write.mode("append") \
         .format("jdbc") \
         .option("url", "jdbc:postgresql://localhost:5432/my_database") \

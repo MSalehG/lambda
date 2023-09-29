@@ -80,11 +80,12 @@ tableList = ["movies",
              "allJoined_stream", "userGrouped_stream", "movieGrouped_stream"]
 
 
-query = f"drop table movies"
+query = f"DROP TABLE IF EXISTS movies"
 postgresConnector(mode="create", query=query)
 
 for query in queryList:
     postgresConnector(mode="create", query=query)
+    print(f"query: {query} is done")
 
 dataset = createMovieDataset(movie_names)
 insertQuery = "INSERT INTO movies (id, name, year, score, language) VALUES %s"
@@ -105,6 +106,7 @@ postgresConnector(mode="insert", query=insertQuery, input=dataset)
 while True:
     #First generate new record
     data = generateRecord()
+    print(f"{data} is produced")
     #Then insert it into Kafka
     kafkaProduce("localhost:9094", argv[1], ','.join(map(str,data)).replace('None',''))
 
